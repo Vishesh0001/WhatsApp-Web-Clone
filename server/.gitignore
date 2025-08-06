@@ -1,0 +1,10 @@
+# dependencies
+/node_modules
+/ca.pem
+.env
+# System
+.DS_Store
+Thumbs.db
+dist/
+build/
+*.log
