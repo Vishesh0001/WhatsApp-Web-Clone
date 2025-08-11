@@ -1,11 +1,11 @@
-const express = require('express')
-const dotenv =require('dotenv')
-const app_routing = require('./modules/app-routing')
+const express = require('express');
+const dotenv = require('dotenv');
+const app_routing = require('./modules/app-routing');
 const cors = require('cors');
-// const { Server } = require("socket.io");
+const { Server } = require("socket.io");
 const webhookRoute = require('./modules/v1/user/route/webhooks');
-const connectDB = require('./config/database')
-// const { validateApiKey } = require('./middleware/header-validations');
+const connectDB = require('./config/database');
+const chatSockets = require('./sockets/chatSockets');
 
 dotenv.config();
 const app = express();
@@ -20,8 +20,6 @@ app.use(
   })
 );
 
-
-
 // Logging middleware for debugging
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.url}`);
@@ -29,6 +27,16 @@ app.use((req, res, next) => {
 });
 
 connectDB();
+
+// Initialize Socket.IO
+const server = require('http').createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST'],
+  },
+});
+chatSockets(io);
 
 // Make sure your webhook routes are set correctly before other routing
 app.use('/', webhookRoute);
@@ -46,7 +54,7 @@ app.get('/health', (req, res) => {
 
 const port = process.env.PORT || 1000;
 try {
-  app.listen(port, () => {
+  server.listen(port, () => {
     console.log('server is running on port ' + port);
   });
 } catch (error) {

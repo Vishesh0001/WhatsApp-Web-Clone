@@ -1,63 +1,119 @@
-import { useState } from "react";
-import secureFetch from "@/utils/securefetch";
+'use client';
+import { useState } from 'react';
+import { Send } from 'lucide-react';
 
-export default function ChatInputBar({ conversationId, onMessageSent }) {
-  const [message, setMessage] = useState("");
-  const [sending, setSending] = useState(false);
+export default function ChatInputBar({ conversationId, socket, userWaId, participants, onMessageSent }) {
+  const [message, setMessage] = useState('');
 
-  const handleSendMessage = async () => {
-    if (!message.trim()) return; // Don't send empty messages
+  const sendMessage = () => {
+    if (!message.trim() || !conversationId) return;
 
-    setSending(true);
-    try {
-      const res = await secureFetch(
-        '/messages/send',
-        {
-          conversationId,
-          content: message.trim(),
-        },
-        'POST'
-      );
+    const receiverWaId = participants.find(p => p.wa_id !== userWaId)?.wa_id || '918329446654';
 
-      if (res && res.code === 1) {
-        onMessageSent(res.data); // Notify parent component to update message list
-        setMessage(""); // Clear input on success
-      } else {
-        alert("Failed to send message");
-      }
-    } catch (error) {
-      console.error("Send message error:", error);
-      alert("Error sending message");
-    } finally {
-      setSending(false);
-    }
-  };
+    const messageDoc = {
+      payload_type: 'whatsapp_webhook',
+      metaData: {
+        entry: [
+          {
+            changes: [
+              {
+                field: 'messages',
+                value: {
+                  contacts: [{ profile: { name: 'User' }, wa_id: userWaId }],
+                  messages: [
+                    {
+                      from: userWaId,
+                      id: `wamid.${Date.now()}`,
+                      timestamp: Math.floor(Date.now() / 1000),
+                      text: { body: message },
+                      type: 'text',
+                    },
+                  ],
+                  messaging_product: 'whatsapp',
+                  metadata: { display_phone_number: receiverWaId, phone_number_id: '629305560276479' },
+                },
+              },
+            ],
+            id: '30164062719905277',
+          },
+        ],
+        gs_app_id: `${conversationId}-app`,
+        object: 'whatsapp_business_account',
+      },
+      createdAt: new Date().toISOString(),
+      startedAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
+      executed: true,
+    };
 
-  // Send on Enter key press
-  const onKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
+    const statusDoc = {
+      meta_data: {
+        entry: [
+          {
+            changes: [
+              {
+                field: 'messages',
+                value: {
+                  messaging_product: 'whatsapp',
+                  metadata: { display_phone_number: receiverWaId, phone_number_id: '629305560276479' },
+                  statuses: [
+                    {
+                      conversation: { id: `${conversationId}-convo-id`, origin: { type: 'user_initiated' } },
+                      gs_id: `${conversationId}-msg${Date.now()}-gs-id`,
+                      id: messageDoc.metaData.entry[0].changes[0].value.messages[0].id,
+                      meta_msg_id: messageDoc.metaData.entry[0].changes[0].value.messages[0].id,
+                      pricing: { billable: true, category: 'utility', pricing_model: 'PMP', type: 'regular' },
+                      recipient_id: receiverWaId,
+                      status: 'sent',
+                      timestamp: Math.floor(Date.now() / 1000),
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+        id: '30164062719905277',
+        gs_app_id: `${conversationId}-app`,
+        object: 'whatsapp_business_account',
+      },
+      created_at: new Date().toISOString(),
+      started_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+      executed: true,
+    };
+
+    socket.emit('new_message', {
+      sender_wa_id: userWaId,
+      receiver_wa_id: receiverWaId,
+      messageDoc,
+      statusDoc,
+    });
+
+    onMessageSent({
+      _id: messageDoc.metaData.entry[0].changes[0].value.messages[0].id,
+      data: messageDoc,
+      status: 'sent',
+    });
+
+    setMessage('');
   };
 
   return (
-    <div className="p-4 border-t border-gray-800 bg-[#121212] flex items-center gap-3">
-      <textarea
-        rows={1}
+    <div className="p-4 border-t border-gray-800 bg-gray-900 flex items-center">
+      <input
+        type="text"
         value={message}
         onChange={(e) => setMessage(e.target.value)}
-        onKeyDown={onKeyDown}
-        placeholder="Type a message"
-        className="flex-grow resize-none rounded-md bg-gray-900 text-white placeholder-gray-500 px-3 py-2 outline-none focus:ring-2 focus:ring-green-500"
-        disabled={sending}
+        placeholder="Type a message..."
+        className="flex-1 bg-gray-800 text-white rounded-lg px-4 py-2 outline-none"
+        onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
       />
       <button
-        onClick={handleSendMessage}
-        disabled={sending || !message.trim()}
-        className={`bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition disabled:opacity-50 disabled:cursor-not-allowed`}
+        onClick={sendMessage}
+        className="ml-2 p-2 bg-green-500 rounded-full text-white hover:bg-green-600"
       >
-        Send
+        <Send className="w-5 h-5" />
       </button>
     </div>
   );
