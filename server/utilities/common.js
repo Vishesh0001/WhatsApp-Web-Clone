@@ -42,11 +42,11 @@ async decrypt(encryptedData) {
   }
 }
 
-  generateToken (Id, r) {
+  generateToken (Id, r,wa_id) {
     // console.log('id',Id,r);
     
     return jwt.sign(
-      { id: Id, r },
+      { id: Id, r ,wa_id:wa_id},
       process.env.JWT_SECRET ,
       { expiresIn: '1d' }
     );
@@ -131,31 +131,31 @@ const token =await this.decrypt(toke)
     return null;
   }
 }
-//  async  getWaIdFromToken(req) {
-//   try {
-//     // console.log('hello',req.headers);
+ async  getWaIdFromToken(req) {
+  try {
+    // console.log('hello',req.headers);
     
-//     const toke = req.headers['token']; // or req.headers.authorization
-//     // console.log('ssss',toke);
+    const toke = req.headers['token']; // or req.headers.authorization
+    // console.log('ssss',toke);
     
-//     if (!toke) {
-//       throw new Error("No token provided");
-//     }
-// const token =await this.decrypt(toke)
-// // console.log('tttt',token);
+    if (!toke) {
+      throw new Error("No token provided");
+    }
+const token =await this.decrypt(toke)
+// console.log('tttt',token);
 
-//     // Verify and decode
-//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // Verify and decode
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-//     // decoded will have { id, r, iat, exp }
-//     // console.log("Decoded payload:", decoded.r);
+    // decoded will have { id, r, iat, exp }
+    // console.log("Decoded payload:", decoded.r);
 
-//     return decoded.r; // Extract id
-//   } catch (err) {
-//     console.error("Token verification failed:", err.message);
-//     return null;
-//   }
-// }
+    return decoded.wa_id; // Extract id
+  } catch (err) {
+    console.error("Token verification failed:", err.message);
+    return null;
+  }
+}
 }
 
 

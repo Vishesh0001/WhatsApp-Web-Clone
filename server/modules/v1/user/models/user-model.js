@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const common = require('../../../../utilities/common');
+const ProcessedMessages = require('./processedMessage');
 
 const userSchema = new mongoose.Schema({
   name: String,
@@ -15,10 +16,10 @@ const userSchema = new mongoose.Schema({
   updatedAt: Date,
 }, { collection: 'users' });
 
-const processedMessagesSchema = new mongoose.Schema({}, { strict: false, collection: 'processed_messages' });
+// const processedMessagesSchema = new mongoose.Schema({}, { strict: false, collection: 'processed_messages' });
 
 const User = mongoose.model('User', userSchema);
-const ProcessedMessages = mongoose.model('processed_messages', processedMessagesSchema);
+// const ProcessedMessages = mongoose.model('processed_messages', processedMessagesSchema);
 
 class UserModel {
   async login(requestd) {
@@ -109,9 +110,12 @@ class UserModel {
     }
   }
 
-  async getprofilepic(id) {
+  async getprofile(wa_id) {
     try {
-      const user = await User.findById(id, { profilePic: 1, name: 1, role: 1, wa_id: 1 });
+      const user = await User.findOne(
+  { wa_id: wa_id },   
+  { profilePic: 1,email:1, about:1, name: 1, role: 1, wa_id: 1, _id: 0 } 
+);
       if (!user) {
         return {
           code: 0,
@@ -122,7 +126,7 @@ class UserModel {
       } else {
         return {
           code: 1,
-          message: { keyword: 'pic found' },
+          message: { keyword: 'profile found' },
           data: [user],
           status: 200,
         };
@@ -138,76 +142,60 @@ class UserModel {
     }
   }
 
-  async getConversations(userId, role) {
-    try { const wa_id = await User.findById(userId).select('wa_id');
-      // console.log(`Fetching conversations for userId: ${userId}, role: ${role}, wa_id: ${wa_id}`);
-      
-      let query = {
-        payload_type: 'whatsapp_webhook',
-        'metaData.entry.changes.value.messages': { $exists: true },
-        $or: [
-          { 'metaData.entry.changes.value.messages.from': wa_id },
-          { 'metaData.entry.changes.value.contacts.wa_id': wa_id },
-        ],
-      };
+  async getConversations(waId) {
+    try { 
+      let wa_id = waId.waId
+  // get waidform bodyyyyy
+// const docs = await ProcessedMessages.find({
+  // "metaData.entry.changes.value.contacts.wa_id": "919937320320"
+// });
+const docs = await ProcessedMessages.find(
+  { "metaData.entry.changes.value.contacts.wa_id": wa_id }
+).lean();
+//   { "metaData.entry.0.changes.0.value.contacts.0.wa_id": wa_id }
+// ).toArray();
 
-      if (role === 'agent') {
-        query = {
-          payload_type: 'whatsapp_webhook',
-          'metaData.entry.changes.value.messages': { $exists: true },
-        };
-      }
+// Extract the messages arrays from each doc, flatten into one array
+const messageArray = docs.flatMap(doc => 
+  doc.metaData.entry[0].changes[0].value.messages || []
+);
 
-      const messages = await ProcessedMessages.find(query)
-        .sort({ 'metaData.entry.changes.value.messages.timestamp': -1 })
-        .lean();
+// console.log("Messages:", messageArray);
+// Get message IDs
+const messageIds = messageArray.map(msg => msg.id);
+// console.log('message ids',messageIds);
 
-      console.log(`Found ${messages.length} messages in processed_messages`);
+// Get docs that have statuses whose `id` is in messageIds
+const statusDocs = await ProcessedMessages.find({
+  "metaData.entry.changes.value.statuses.id": { $in: messageIds }
+}).lean();
+// console.log('status',statusDocs);
 
-      const conversations = [];
-      const convMap = new Map();
+// Extract all statuses into one flat array
+// 2. Flatten all statuses from all entries & changes
+const statusArray = statusDocs.flatMap(doc =>
+  doc.metaData?.entry?.flatMap(e =>
+    e.changes?.flatMap(c =>
+      c.value?.statuses || []
+    )
+  ) || []
+);
 
-      for (const message of messages) {
-        const conversationId = message.metaData.gs_app_id.split('-')[0];
-        if (!convMap.has(conversationId)) {
-          const msgData = message.metaData.entry[0].changes[0].value.messages[0];
-          const contact = message.metaData.entry[0].changes[0].value.contacts[0];
-          const otherWaId = msgData.from === wa_id ? contact.wa_id : msgData.from;
-          
-          const otherUser = await User.findOne({ wa_id: otherWaId }).lean();
-          const currentUser = await User.findOne({ wa_id }).lean();
-          
-          const participants = [
-            { 
-              wa_id, 
-              name: currentUser?.name || 'User', 
-              profilePic: currentUser?.profilePic || 'https://placehold.co/600x400?text=User'
-            },
-            { 
-              wa_id: otherWaId, 
-              name: otherUser?.name || contact.profile.name || 'User',
-              profilePic: otherUser?.profilePic || 'https://placehold.co/600x400?text=User'
-            },
-          ];
+// 3. Map message ID → status
+const statusMap = new Map(statusArray.map(st => [st.id, st.status]));
+const mergedMessages = messageArray.map(msg => ({
+  ...msg,
+  status: statusMap.get(msg.id) || "unknown"
+}));
 
-          convMap.set(conversationId, {
-            conversationId,
-            participants,
-            lastMessage: { data: message },
-          });
-        }
-      }
-
-      convMap.forEach((conv) => conversations.push(conv));
-      
-      console.log('Conversations:', conversations);
-
+// console.log("Merged result:", mergedMessages);
       return {
         code: 1,
         message: { keyword: 'success' },
-        data: conversations,
+        data: mergedMessages,
         status: 200,
       };
+// return docs;
     } catch (error) {
       console.error('Error in getConversations:', error);
       return {
@@ -218,52 +206,122 @@ class UserModel {
       };
     }
   }
-
-  async getMessages(conversationId, userId, role) {
-    try {
-      // console.log(`Fetching messages for conversationId: ${conversationId}, userId: ${userId}, role: ${role}, wa_id: ${wa_id}`);
-      const wa_id = await User.findById(userId).select('wa_id');
-      let query = {
-        payload_type: 'whatsapp_webhook',
-        'metaData.gs_app_id': `${conversationId}-app`,
-        'metaData.entry.changes.value.messages': { $exists: true },
-      };
-
-      if (role !== 'agent') {
-        query.$or = [
-          { 'metaData.entry.changes.value.messages.from': wa_id },
-          { 'metaData.entry.changes.value.contacts.wa_id': wa_id },
-        ];
-      }
-
-      const messages = await ProcessedMessages.find(query)
-        .sort({ 'metaData.entry.changes.value.messages.timestamp': 1 })
-        .lean();
-
-      console.log(`Found ${messages.length} messages for conversation ${conversationId}`);
-
-      const formattedMessages = messages.map((msg) => ({
-        _id: msg.metaData.entry[0].changes[0].value.messages[0].id,
-        data: msg,
-        status: msg.metaData.entry[0].changes[0].value.statuses?.[0]?.status || 'sent',
-      }));
-
-      return {
+async getRecentMessages(role,wa_id){
+try {
+  // let query;
+  if(role=='agent'){
+  const docs = await User.find(
+  { "role": 'customer' },{
+    "wa_id":1
+  }
+).lean();
+// console.log('asdads',docs);
+let result = []
+for (const key of docs) {
+  // console.log(key.wa_id)
+  let wa_id = key.wa_id
+   let profilePic = await User.findOne({'wa_id':wa_id},{'profilePic':1})
+   let doc = await ProcessedMessages.findOne(
+    { "metaData.entry.changes.value.contacts.wa_id": wa_id },
+    { "metaData.entry.changes.value": 1, _id: 0 }
+  )
+    .sort({ "metaData.entry.changes.value.messages.timestamp": -1 })
+    .lean();
+      doc.profilePic = profilePic?.profilePic || null;
+  result.push(doc)
+  }
+    // console.log('dsdsd',doc);
+         return {
         code: 1,
         message: { keyword: 'success' },
-        data: formattedMessages,
+        data: result,
         status: 200,
       };
-    } catch (error) {
-      console.error('Error in getMessages:', error);
-      return {
-        code: 0,
-        message: { keyword: 'txt_server_error' },
+  }else{
+    let profilePic = await User.findOne({'wa_id':wa_id},{'profilePic':1})
+  let doc = await ProcessedMessages.findOne(
+    { "metaData.entry.changes.value.contacts.wa_id": wa_id },
+    { "metaData.entry.changes.value": 1, _id: 0 }
+  )
+    .sort({ "metaData.entry.changes.value.messages.timestamp": -1 })
+    .lean();
+    doc.profilePic = profilePic?.profilePic || null;
+let result = [doc]
+         return {
+        code: 1,
+        message: { keyword: 'success' },
+        data: result,
+        status: 200,
+      };
+    }
+    // let v = doc.entry[0].value.messages[0]
+// console.log('wwww',v)
+//   { "metaData.entry.0.changes.0.value.contacts.0.wa_id": wa_id }
+// ).toArray();
+
+// Extract the messages arrays from each doc, flatten into one array
+// const messageArray = docs.flatMap(doc => 
+//   doc.metaData.entry[0].changes[0].value.messages || []
+// );
+
+// console.log("Messages:", messageArray);
+// // Get message IDs
+// const messageIds = messageArray.map(msg => msg.id);
+// console.log('message ids',messageIds);
+} catch (error) {
+       return {
+        code: 1,
+        message: { keyword: 'internalserver error' },
         data: [],
         status: 500,
       };
-    }
-  }
+}
+}
+  // async getMessages(conversationId, userId, role) {
+  //   try {
+  //     // console.log(`Fetching messages for conversationId: ${conversationId}, userId: ${userId}, role: ${role}, wa_id: ${wa_id}`);
+  //     const wa_id = await User.findById(userId).select('wa_id');
+  //     let query = {
+  //       payload_type: 'whatsapp_webhook',
+  //       'metaData.gs_app_id': `${conversationId}-app`,
+  //       'metaData.entry.changes.value.messages': { $exists: true },
+  //     };
+
+  //     if (role !== 'agent') {
+  //       query.$or = [
+  //         { 'metaData.entry.changes.value.messages.from': wa_id },
+  //         { 'metaData.entry.changes.value.contacts.wa_id': wa_id },
+  //       ];
+  //     }
+
+  //     const messages = await ProcessedMessages.find(query)
+  //       .sort({ 'metaData.entry.changes.value.messages.timestamp': 1 })
+  //       .lean();
+
+  //     console.log(`Found ${messages.length} messages for conversation ${conversationId}`);
+
+  //     const formattedMessages = messages.map((msg) => ({
+  //       _id: msg.metaData.entry[0].changes[0].value.messages[0].id,
+  //       data: msg,
+  //       status: msg.metaData.entry[0].changes[0].value.statuses?.[0]?.status || 'sent',
+  //     }));
+
+  //     return {
+  //       code: 1,
+  //       message: { keyword: 'success' },
+  //       data: formattedMessages,
+  //       status: 200,
+  //     };
+  //   } catch (error) {
+  //     console.error('Error in getMessages:', error);
+  //     return {
+  //       code: 0,
+  //       message: { keyword: 'txt_server_error' },
+  //       data: [],
+  //       status: 500,
+  //     };
+  //   }
+  // }
 }
 
 module.exports = { UserModel: new UserModel(), User, ProcessedMessages };

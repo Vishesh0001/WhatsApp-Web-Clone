@@ -2,10 +2,10 @@ const express = require('express');
 const dotenv = require('dotenv');
 const app_routing = require('./modules/app-routing');
 const cors = require('cors');
-const { Server } = require("socket.io");
-const webhookRoute = require('./modules/v1/user/route/webhooks');
+// const { Server } = require("socket.io");
+
 const connectDB = require('./config/database');
-const chatSockets = require('./sockets/chatSockets');
+// const chatSockets = require('./sockets/chatSockets');
 
 dotenv.config();
 const app = express();
@@ -29,17 +29,14 @@ app.use((req, res, next) => {
 connectDB();
 
 // Initialize Socket.IO
-const server = require('http').createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST'],
-  },
-});
-chatSockets(io);
-
-// Make sure your webhook routes are set correctly before other routing
-app.use('/', webhookRoute);
+// const server = require('http').createServer(app);
+// const io = new Server(server, {
+//   cors: {
+//     origin: '*',
+//     methods: ['GET', 'POST'],
+//   },
+// });
+// chatSockets(io);
 
 // Your other API versioned routes
 app_routing.v1(app);
@@ -54,7 +51,7 @@ app.get('/health', (req, res) => {
 
 const port = process.env.PORT || 1000;
 try {
-  server.listen(port, () => {
+  app.listen(port, () => {
     console.log('server is running on port ' + port);
   });
 } catch (error) {

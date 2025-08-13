@@ -13,6 +13,7 @@ import secureFetch from '@/utils/securefetch';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Cookies from 'js-cookie';  // Make sure you have js-cookie installed
+import ChatHistory from '@/components/ChatHistory';
 
 export default function HomePage() {
   
@@ -23,10 +24,11 @@ export default function HomePage() {
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
 
+  const [selectWaId,setSelectedWaId] = useState('')
   useEffect(() => {
     async function getPic(){
       try {
-        let response = await secureFetch('/profilepic',{},'GET')
+        let response = await secureFetch('/profile',{},'GET')
         let profilepic = response.data[0].profilePic
         setPic(profilepic)
       } catch (error) {
@@ -94,13 +96,13 @@ export default function HomePage() {
           </ToggleButtonGroup>
         </Stack>
 
-        {/* Bottom settings + avatar */}
+   
         <div className="flex flex-col justify-center items-center gap-4 text-[#A9AAAA]">
           <IconButton 
             aria-label="settings" 
             onClick={handleSettingsClick} 
             color="primary"
-            // removed disabled so it can be clickable
+ 
           >
             <Settings className="text-[#A9AAAA]" />
           </IconButton>
@@ -128,8 +130,9 @@ export default function HomePage() {
 
       </div>
 
-      <div className="ml-[64px] flex-1">
-        <Chats/>
+      <div className="ml-[64px] flex">
+        <ChatHistory  onSelectChat={(wa_id) => setSelectedWaId(wa_id)}/>
+          <Chats wa_id = {selectWaId}/>
       </div>
 
     </div>
