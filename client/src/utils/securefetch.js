@@ -60,7 +60,7 @@ const secureFetch = async (url, data = {}, method = 'POST') => {
       };
     }
 
-    console.log('reqOptions', reqOptions);
+    // console.log('reqOptions', reqOptions);
 
     const res = await axios(reqOptions);
     // console.log('yupppp',res)

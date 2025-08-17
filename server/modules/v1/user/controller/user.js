@@ -41,8 +41,8 @@ class user {
       const role = await common.getRoleFromToken(req);
       const wa_id = await common.getWaIdFromToken(req)
       let response = await UserModel.getRecentMessages(role,wa_id);
-      // console.log('ff',response);
-      
+      // console.log('ff',role,wa_id);
+      // res.send(response)
       common.sendResponse(req, res, response.code, response.message, response.data, response.status);
     } catch (error) {
       console.log("controller error", error.message);

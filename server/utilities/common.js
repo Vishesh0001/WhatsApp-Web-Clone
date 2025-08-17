@@ -60,7 +60,7 @@ async decrypt(encryptedData) {
       
       // let dataa = await data.data.json()
       let decryptedData = await this.decrypt(responseData);
-    console.log("decreptted data in decode boduy",decryptedData);
+    // console.log("decreptted data in decode boduy",decryptedData);
       
       return decryptedData;
       // return data

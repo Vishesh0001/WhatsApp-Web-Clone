@@ -1,5 +1,6 @@
 const { Server } = require('socket.io');
-const { User, ProcessedMessages } = require('../modules/v1/user/models/user-model');
+const { User, ProcessedMessages,UserModel } = require('../modules/v1/user/models/user-model');
+const userModel = require('../modules/v1/user/models/user-model');
 
 module.exports = (server) => {
   const io = new Server(server, {
@@ -12,136 +13,51 @@ module.exports = (server) => {
   io.on('connection', (socket) => {
     console.log('New client connected:', socket.id);
 
-    socket.on('join', async (wa_id) => {
-      console.log(`User ${wa_id} joined`);
-      socket.join(wa_id);
+    socket.on('join', async (conversation_id) => {
+         console.log(`User ${conversation_id.conversation_id} joined`);
+      socket.join(conversation_id.conversation_id);
 
-      try {
-        let query = {
-          payload_type: 'whatsapp_webhook',
-          'metaData.entry.changes.value.messages': { $exists: true },
-          $or: [
-            { 'metaData.entry.changes.value.messages.from': wa_id },
-            { 'metaData.entry.changes.value.contacts.wa_id': wa_id },
-          ],
-        };
 
-        const user = await User.findOne({ wa_id });
-        if (user?.role === 'agent') {
-          query = {
-            payload_type: 'whatsapp_webhook',
-            'metaData.entry.changes.value.messages': { $exists: true },
-          };
-        }
-
-        const messages = await ProcessedMessages.find(query)
-          .sort({ 'metaData.entry.changes.value.messages.timestamp': -1 })
-          .lean();
-
-        const conversations = [];
-        const convMap = new Map();
-
-        for (const message of messages) {
-          const conversationId = message.metaData.gs_app_id.split('-')[0];
-          if (!convMap.has(conversationId)) {
-            const msgData = message.metaData.entry[0].changes[0].value.messages[0];
-            const contact = message.metaData.entry[0].changes[0].value.contacts[0];
-            const otherWaId = msgData.from === wa_id ? contact.wa_id : msgData.from;
-            const otherUser = await User.findOne({ wa_id: otherWaId }).lean();
-            const currentUser = await User.findOne({ wa_id }).lean();
-
-            const participants = [
-              { 
-                wa_id, 
-                name: currentUser?.name || 'User', 
-                profilePic: currentUser?.profilePic || 'https://placehold.co/600x400?text=User'
-              },
-              { 
-                wa_id: otherWaId, 
-                name: otherUser?.name || contact.profile.name || 'User',
-                profilePic: otherUser?.profilePic || 'https://placehold.co/600x400?text=User'
-              },
-            ];
-
-            convMap.set(conversationId, {
-              conversationId,
-              participants,
-              lastMessage: { data: message },
-            });
-          }
-        }
-
-        convMap.forEach((conv) => conversations.push(conv));
-        socket.emit('initial_conversations', conversations);
-      } catch (error) {
-        console.error('Error fetching initial conversations:', error);
-        socket.emit('error', 'Failed to load conversations');
-      }
     });
-
-    socket.on('new_message', async ({ sender_wa_id, receiver_wa_id, messageDoc, statusDoc }) => {
-      try {
-        const messageId = `${messageDoc.metaData.gs_app_id.split('-')[0]}-msg${Date.now()}-user`;
-        const statusId = `${statusDoc.meta_data.gs_app_id.split('-')[0]}-msg${Date.now()}-status`;
-
-        await ProcessedMessages.create([
-          { ...messageDoc, _id: messageId },
-          { ...statusDoc, _id: statusId },
-        ]);
-
-        io.to(sender_wa_id).emit('new_message', {
-          conversationId: messageDoc.metaData.gs_app_id.split('-')[0],
-          message: { ...messageDoc, _id: messageId },
-        });
-        io.to(receiver_wa_id).emit('new_message', {
-          conversationId: messageDoc.metaData.gs_app_id.split('-')[0],
-          message: { ...messageDoc, _id: messageId },
-        });
-
-        setTimeout(async () => {
-          const updatedStatusDoc = {
-            ...statusDoc,
-            meta_data: {
-              ...statusDoc.meta_data,
-              entry: [
-                {
-                  ...statusDoc.meta_data.entry[0],
-                  changes: [
-                    {
-                      ...statusDoc.meta_data.entry[0].changes[0],
-                      value: {
-                        ...statusDoc.meta_data.entry[0].changes[0].value,
-                        statuses: [
-                          {
-                            ...statusDoc.meta_data.entry[0].changes[0].value.statuses[0],
-                            status: 'delivered',
-                          },
-                        ],
-                      },
-                    },
-                  ],
-                },
-              ],
-            },
-          };
-
-          await ProcessedMessages.updateOne(
-            { _id: statusId },
-            { $set: updatedStatusDoc }
-          );
-          io.to(sender_wa_id).emit('update_status', {
-            conversationId: messageDoc.metaData.gs_app_id.split('-')[0],
-            status: updatedStatusDoc.meta_data.entry[0].changes[0].value.statuses[0],
-          });
-        }, 1000);
-      } catch (error) {
-        console.error('Error handling new message:', error);
-        socket.emit('error', 'Failed to send message: ' + error.message);
-      }
+    socket.on('joinchats', async (data) => {
+      console.log(`User joined chat history: ${data.name}`);
+      socket.join('chathistory');
+      // You can implement logic to handle chat history here
     });
+    socket.on('leaveChat',(conversation_id)=>{
+  // let wa_id1 = Number(wa_id.wa_id1);
+  //    let wa_id2 = Number(wa_id.wa_id2)
+      // console.log(wa_id1,Math.min(wa_id1, wa_id2),wa_id2);
+ 
+      // let roomName = "chat:" + Math.min(wa_id1, wa_id2) + "-" + Math.max(wa_id1, wa_id2)
+      socket.leave(conversation_id)
+         console.log(`room ${conversation_id} left`);
+        //  console.log(wa_id.id);
+         
+    })
 
-    socket.on('disconnect', () => {
+   
+
+  socket.on("sendMessage", async({  message,wa_id, conversation_id,wa_id2}) => {
+    // Save message to DB here
+    console.log('in scoket',message,wa_id, conversation_id,wa_id2);
+    let messageresponse = await  UserModel.createMessageAndStatus({message,wa_id,conversation_id,wa_id2})
+    // console.log('messageresponse',messageresponse);
+
+    io.to(conversation_id).emit("receiveMessage", messageresponse);
+    io.to('chathistory').emit("receiveMessage", messageresponse);
+  });
+  socket.on('disconnect', () => {
       console.log('Client disconnected:', socket.id);
-    });
+  });
+
+  socket.on("chatOpened", async(data) => {
+    console.log("Chat opened:", data);
+  let response = await UserModel.markStatusesAsRead(data.waid,data.conversation_id)
+  console.log('sts id s',response);
+  let conversation_id = data.conversation_id
+    io.to(conversation_id).emit('statusUpdated',response)
+    // ✅ Update DB status here (e.g., mark as read/seen)
+  });
   });
 };

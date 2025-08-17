@@ -2,17 +2,52 @@
 import { EllipsisVertical, MessageSquarePlus, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import secureFetch from '@/utils/securefetch';
-import { List, ListItem, ListItemText,Typography } from "@mui/material";
+import { List, ListItem, ListItemText } from "@mui/material";
 import ListItemAvatar from '@mui/material/ListItemAvatar';
 import Avatar from '@mui/material/Avatar';
+import Cookies from 'js-cookie';
+import { jwtVerify } from 'jose';
+import { getSocket } from '../libs/socket';
+
 export default function ChatHistory({onSelectChat}) {
+      const socket = getSocket();       
   const [chats, setChats] = useState([]);
+  const [role, setRole] = useState(null);
+const[waId,setWaID] = useState('')
+  useEffect(() => {
+    const decodeToken = async () => {
+      try {
+        const token = Cookies.get('token_test');
+        if (!token) return;
+
+        const secret = new TextEncoder().encode(process.env.NEXT_PUBLIC_JWT_SECRET);
+
+        const { payload } = await jwtVerify(token, secret);
+        setWaID(payload.wa_id)
+        setRole(payload.r); 
+      } catch (err) {
+        console.error('Token verification failed:', err);
+      }
+    };
+        decodeToken();
+  }, []);
 
   function truncateText(text, maxLength) {
   if (!text) return "";
   return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
 }
-
+useEffect(()=>{
+  socket.emit("joinchats", { name:'chathistory' });
+ 
+  socket.on("receiveMessage", (newMsg) => {
+    let text = newMsg.text.body
+     let conversation_id = newMsg.conversationId
+    //  console.log('newMsg',newMsg);
+    //  console.log('788788787',text,conversation_id);
+   
+     
+});
+},[])
   useEffect(() => {
     async function getChats() {
       try {
@@ -31,70 +66,125 @@ export default function ChatHistory({onSelectChat}) {
   }, []);
 
   return (
-    <>
-      <div className="w-[462px] flex flex-col bg-black">
-        {/* Navbar */}
-        <nav className="fixed top-0 bg-[#161717] h-[140px] w-[462px] z-10">
-          <div className="flex justify-between items-center px-5 py-4">
-            <div className="font-semibold text-[20px] text-white font-sans">WhatsApp</div>
-            <div className="flex space-x-3 mr-[30px]">
-              <MessageSquarePlus className="text-white cursor-pointer" />
-              <EllipsisVertical className="text-white cursor-pointer" />
-            </div>
+//   
+   <div className="w-full h-full flex flex-col bg-[#161717] overflow-hidden">
+   
+      <nav className="bg-[#161717] flex-shrink-0 ">
+        <div className="flex justify-between items-center px-4 md:px-5 py-3 md:py-4">
+          <div className="font-semibold text-lg md:text-[20px] text-white font-sans">WhatsApp</div>
+          <div className="flex space-x-2 md:space-x-3">
+            <MessageSquarePlus className="text-white cursor-pointer w-5 h-5 md:w-6 md:h-6" />
+            <EllipsisVertical className="text-white cursor-pointer w-5 h-5 md:w-6 md:h-6" />
           </div>
-          <div className="w-full bg-[#161717] px-4 py-2">
-            <div className="flex items-center bg-[#2E2F2F] rounded-full px-3 py-2">
-              <Search className="text-gray-400 w-5 h-5 mr-2" />
-              <input
-                type="text"
-                placeholder="Search or start new chat"
-                className="bg-transparent outline-none text-white placeholder-gray-400 w-full"
-              />
-            </div>
+        </div>
+        
+        <div className="px-3 md:px-4 pb-3 md:pb-4">
+          <div className="flex items-center bg-[#2E2F2F] rounded-full px-3 py-2">
+            <Search className="text-gray-400 w-4 h-4 md:w-5 md:h-5 mr-2 flex-shrink-0" />
+            <input
+              type="text"
+              placeholder="Search or start new chat"
+              className="bg-transparent outline-none text-white placeholder-gray-400 w-full text-sm md:text-base"
+            />
           </div>
-        </nav>
+        </div>
+   <div className="flex items-center gap-2 px-6 py-2  text-gray-400 rounded-full text-sm">
+      <span className='bg-[#103529] px-4 py-1 rounded-full border hover:bg-gray-300 '>All</span>
+            <span className=' px-4 py-1 rounded-full border hover:bg-gray-300'>Unread</span>
+                  <span className=' px-4 py-1 rounded-full border hover:bg-gray-300'>Favorites</span>
+                        <span className=' px-4 py-1 rounded-full border hover:bg-gray-300'>Groups</span>
+      </div>
+      </nav>
 
-        {/* Chat List */}
-        <div className="w-[462px] border-r border-gray-300 h-screen overflow-y-auto bg-[#161717] mt-[140px]">
-          <List>
-            {chats.map((chat, index) => {
-              const name =
-                chat?.metaData?.entry?.[0]?.changes?.[0]?.value?.contacts?.[0]?.profile?.name ||
-             
-                "Unknown";
-                
-    const timestamp = chat?.metaData?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.timestamp;
-    const formattedTime = timestamp
+
+      <div className="flex-1 overflow-y-auto">
+        <List sx={{ padding: 0 }}>
+          {chats.map((chat, index) => {
+            
+    let name =chat?.name ||"Unknown";
+    let timestamp = chat?.timestamp;
+     let from_wa_id = chat?.from;
+    //  console.log(from_wa_id,'from');
+     
+    let formattedTime = timestamp
       ? new Date(Number(timestamp) * 1000).toLocaleString():"";
-                   
-                   const lastMessage = truncateText(
-  chat?.metaData?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.text?.body,
-  30 // max characters before adding "..."
-);
-const wa_id =   chat?.metaData?.entry?.[0]?.changes?.[0]?.value?.contacts?.[0]?.wa_id;
+  let lastMessage = truncateText(chat?.text?.body,30 );
+let conversation_id =   chat?.conversationId;
+let profilePic = chat?.profilePic
+if(role=='customer'){
+  name= 'Home Decor';
+profilePic = 'https://placehold.co/600x400?text=Home+Decor'
+}
 // console.log('loololoolo',wa_id);
 
-              return (
-                <ListItem
-                  key={index}
-                  onClick={() => onSelectChat({wa_id:wa_id,name:name,profilePic:chat.profilePic})}
-                  className=" hover:bg-[#242626] cursor-pointer transition "
-                   sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
-                >
-      <ListItemAvatar>
-          <Avatar alt="user" src={chat.profilePic} />
-        </ListItemAvatar>
-                  <ListItemText
-                     primary={<span className="text-white font-semibold">{name}</span>}
-  secondary={<span className="text-gray-400 text-sm">{lastMessage}</span>}
+            return (
+              <ListItem
+                key={index}
+                onClick={() => {
+                  
+    socket.emit("chatOpened", {
+      conversation_id: conversation_id,
+      waid: waId,
+
+    });
+    onSelectChat({conversation_id:conversation_id,waid:waId,name:name,profilePic:profilePic,role:role,from:from_wa_id})
+  }}
+                className="hover:bg-[#242626] cursor-pointer transition"
+                sx={{ 
+                  display: "flex", 
+                  justifyContent: "space-between", 
+                  alignItems: "center",
+                  padding: { xs: '12px 16px', md: '16px 20px' },
+                
+                }}
+              >
+                <ListItemAvatar sx={{ minWidth: { xs: '48px', md: '56px' } }}>
+                  <Avatar 
+                    alt="user" 
+                    src={profilePic} 
+                    sx={{ 
+                      width: { xs: 40, md: 48 }, 
+                      height: { xs: 40, md: 48 } 
+                    }}
                   />
-                    <span className="text-gray-400 text-xs">{formattedTime}</span>
-                </ListItem>
-              );
-            })}
-          </List>
-        </div>
+                </ListItemAvatar>
+                
+                <ListItemText
+                  primary={
+                    <span className="text-white font-semibold text-sm md:text-base line-clamp-1">
+                      {name}
+                    </span>
+                  }
+                  secondary={
+                    <span className="text-gray-400 text-xs md:text-sm line-clamp-1 mt-1">
+                      {lastMessage}
+                    </span>
+                  }
+                  sx={{ 
+                    margin: 0,
+                    '& .MuiListItemText-primary': {
+                      marginBottom: '2px'
+                    }
+                  }}
+                />
+                
+                <div className="flex flex-col items-end justify-center ml-2">
+                  <span className="text-gray-400 text-xs whitespace-nowrap">
+                    {/* {new Date(Number(timestamp) * 1000).toLocaleTimeString([], { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })} */}
+                    {formattedTime}
+                  </span>
+                </div>
+              </ListItem>
+            );
+          })}
+        </List>
       </div>
-    </>
+      
+      {/* Mobile bottom padding to account for bottom navigation */}
+      <div className="md:hidden h-16 flex-shrink-0"></div>
+    </div>
   );
 }

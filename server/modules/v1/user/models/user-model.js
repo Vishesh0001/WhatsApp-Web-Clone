@@ -144,22 +144,27 @@ class UserModel {
 
   async getConversations(waId) {
     try { 
-      let wa_id = waId.waId
+      let conversationId = waId.conversation_id;
   // get waidform bodyyyyy
-// const docs = await ProcessedMessages.find({
-  // "metaData.entry.changes.value.contacts.wa_id": "919937320320"
-// });
+// console.log('0000conversationiddd',conversationId);
+
 const docs = await ProcessedMessages.find(
-  { "metaData.entry.changes.value.contacts.wa_id": wa_id }
+  { "conversationId": conversationId }
 ).lean();
-//   { "metaData.entry.0.changes.0.value.contacts.0.wa_id": wa_id }
-// ).toArray();
+// console.log(docs);
 
 // Extract the messages arrays from each doc, flatten into one array
-const messageArray = docs.flatMap(doc => 
-  doc.metaData.entry[0].changes[0].value.messages || []
-);
-
+// const messageArray = docs.flatMap(doc =>{ 
+//   doc.metaData.entry[0].changes[0].value.messages || [],
+//   doc.conversationId}
+// );
+const messageArray = docs.flatMap(doc => {
+  const messages = doc.metaData?.entry?.[0]?.changes?.[0]?.value?.messages || [];
+  return messages.map(msg => ({
+    ...msg,
+    conversationId: doc.conversationId
+  }));
+});
 // console.log("Messages:", messageArray);
 // Get message IDs
 const messageIds = messageArray.map(msg => msg.id);
@@ -182,7 +187,7 @@ const statusArray = statusDocs.flatMap(doc =>
 );
 
 // 3. Map message ID → status
-const statusMap = new Map(statusArray.map(st => [st.id, st.status]));
+const statusMap = new Map(statusArray.map(st => [st.id, {status:st.status,recipient_id:st.recipient_id}]));
 const mergedMessages = messageArray.map(msg => ({
   ...msg,
   status: statusMap.get(msg.id) || "unknown"
@@ -206,77 +211,79 @@ const mergedMessages = messageArray.map(msg => ({
       };
     }
   }
-async getRecentMessages(role,wa_id){
-try {
-  // let query;
-  if(role=='agent'){
-  const docs = await User.find(
-  { "role": 'customer' },{
-    "wa_id":1
-  }
-).lean();
-// console.log('asdads',docs);
-let result = []
-for (const key of docs) {
-  // console.log(key.wa_id)
-  let wa_id = key.wa_id
-   let profilePic = await User.findOne({'wa_id':wa_id},{'profilePic':1})
-   let doc = await ProcessedMessages.findOne(
-    { "metaData.entry.changes.value.contacts.wa_id": wa_id },
-    { "metaData.entry.changes.value": 1, _id: 0 }
-  )
-    .sort({ "metaData.entry.changes.value.messages.timestamp": -1 })
-    .lean();
-      doc.profilePic = profilePic?.profilePic || null;
-  result.push(doc)
-  }
-    // console.log('dsdsd',doc);
-         return {
-        code: 1,
-        message: { keyword: 'success' },
-        data: result,
-        status: 200,
-      };
-  }else{
-    let profilePic = await User.findOne({'wa_id':wa_id},{'profilePic':1})
-  let doc = await ProcessedMessages.findOne(
-    { "metaData.entry.changes.value.contacts.wa_id": wa_id },
-    { "metaData.entry.changes.value": 1, _id: 0 }
-  )
-    .sort({ "metaData.entry.changes.value.messages.timestamp": -1 })
-    .lean();
-    doc.profilePic = profilePic?.profilePic || null;
-let result = [doc]
-         return {
-        code: 1,
-        message: { keyword: 'success' },
-        data: result,
-        status: 200,
-      };
-    }
-    // let v = doc.entry[0].value.messages[0]
-// console.log('wwww',v)
-//   { "metaData.entry.0.changes.0.value.contacts.0.wa_id": wa_id }
-// ).toArray();
+// async getRecentMessages(role,wa_id){
+// try {
+//   // let query;
+//   if(role=='agent'){
+//   const docs = await User.find(
+//   { "role": 'customer' },{
+//     "wa_id":1
+//   }
+// ).lean();
+// // console.log('asdads',docs);
+// let result = []
+// for (const key of docs) {
+//   // console.log(key.wa_id)
+//   let wa_id = key.wa_id
+//    let profilePic = await User.findOne({'wa_id':wa_id},{'profilePic':1})
+//    let doc = await ProcessedMessages.findOne(
+//     { "metaData.entry.changes.value.contacts.wa_id": wa_id },
+//     { "metaData.entry.changes.value": 1, _id: 0 }
+//   )
+//     .sort({ "metaData.entry.changes.value.messages.timestamp": -1 })
+//     .lean();
+//       doc.profilePic = profilePic?.profilePic || null;
+//   result.push(doc)
+//   }
+//     // console.log('dsdsd',doc);
+//          return {
+//         code: 1,
+//         message: { keyword: 'success' },
+//         data: result,
+//         status: 200,
+//       };
+//   }else{
+//     let profilePic = await User.findOne({'wa_id':wa_id},{'profilePic':1})
+//   let doc = await ProcessedMessages.findOne(
+//     { "metaData.entry.changes.value.contacts.wa_id": wa_id },
+//     { "metaData.entry.changes.value": 1, _id: 0 }
+//   )
+//     .sort({ "metaData.entry.changes.value.messages.timestamp": -1 })
+//     .lean();
+//     doc.profilePic = profilePic?.profilePic || null;
+// let result = [doc]
+// //  console.dir(result, { depth: null, colors: true });
+  
+//          return {
+//         code: 1,
+//         message: { keyword: 'success' },
+//         data: result,
+//         status: 200,
+//       };
+//     }
+//     // let v = doc.entry[0].value.messages[0]
+// // console.log('wwww',v)
+// //   { "metaData.entry.0.changes.0.value.contacts.0.wa_id": wa_id }
+// // ).toArray();
 
-// Extract the messages arrays from each doc, flatten into one array
-// const messageArray = docs.flatMap(doc => 
-//   doc.metaData.entry[0].changes[0].value.messages || []
-// );
+// // Extract the messages arrays from each doc, flatten into one array
+// // const messageArray = docs.flatMap(doc => 
+// //   doc.metaData.entry[0].changes[0].value.messages || []
+// // );
 
-// console.log("Messages:", messageArray);
-// // Get message IDs
-// const messageIds = messageArray.map(msg => msg.id);
-// console.log('message ids',messageIds);
-} catch (error) {
-       return {
-        code: 1,
-        message: { keyword: 'internalserver error' },
-        data: [],
-        status: 500,
-      };
-}
-}
+// // console.log("Messages:", messageArray);
+// // // Get message IDs
+// // const messageIds = messageArray.map(msg => msg.id);
+// // console.log('message ids',messageIds);
+// } catch (error) {
+//        return {
+//         code: 1,
+//         message: { keyword: 'internalserver error' },
+//         data: [],
+//         status: 500,
+//       };
+// }
+// }
   // async getMessages(conversationId, userId, role) {
   //   try {
   //     // console.log(`Fetching messages for conversationId: ${conversationId}, userId: ${userId}, role: ${role}, wa_id: ${wa_id}`);
@@ -322,6 +329,242 @@ let result = [doc]
   //     };
   //   }
   // }
+
+
+  async getRecentMessages(role,waId){
+try {
+  let query;
+  if(role=='agent'){
+     query = 'customer'}
+     else{
+      query = 'agent'
+     }
+  const docs = await User.find(
+  { "role": query },{
+    "wa_id":1
+  }
+).lean();
+// console.log('asdads',docs);
+let result = []
+for (const key of docs) {
+  
+  let wa_id
+  // console.log(key.wa_id)
+  if(role=='agent'){wa_id = key.wa_id}
+  else{wa_id= waId}
+   let profilePic = await User.findOne({'wa_id':wa_id},{'profilePic':1,'name':1})
+  //  console.log(profilePic);
+   
+   let doc = await ProcessedMessages.findOne(
+    { "metaData.entry.changes.value.contacts.wa_id": wa_id },
+    { _id: 1,"payload_type":1,"conversationId":1}
+  )
+    .lean();
+    // console.log(doc);
+    
+    let id = doc.conversationId
+    // console.log(id);
+    
+  let docs = await ProcessedMessages.find(
+  { conversationId: id },
+  { "metaData.entry.changes.value.messages": 1,"conversationId":1, _id: 0 }
+).lean();
+// console.log(docs);
+
+// Extract messages from all docs
+let allMessages = docs.flatMap(doc =>
+  doc.metaData?.entry?.flatMap(e =>
+    e.changes?.flatMap(c =>
+      (c.value?.messages || []).map(m => ({
+        ...m,
+        conversationId: doc.conversationId
+      }))
+    )
+  ) || []
+);
+
+// Sort in JS
+allMessages.sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
+
+// console.dir(allMessages, { depth: null, colors: true });
+
+// latest message
+let lastMsg = allMessages[0];
+    
+      lastMsg.profilePic = profilePic?.profilePic || null;
+        lastMsg.name = profilePic?.name || null;
+  result.push(lastMsg)
+  }
+    // console.log('dsdsd',doc);
+         return {
+        code: 1,
+        message: { keyword: 'success' },
+        data: result,
+        status: 200,
+      };
+
+} catch (error) {
+  console.log('error',error.message);
+  
+       return {
+        code: 0,
+        message: { keyword: 'internalserver error' },
+        data: [],
+        status: 500,
+      };
 }
+}
+async createMessageAndStatus ({ message, wa_id, conversation_id,wa_id2 }){
+  // 1️⃣ Find latest message for wa_id1
+try{ 
+  const newText = message
+  // console.log('texttt', newText, wa_id, conversation_id);
+let  wa_id1 = String(wa_id);
+  // wa_id2 = String(wa_id2)
+  // console.log('***',wa_id1);
+  
+  const latestMsgDoc = await ProcessedMessages.findOne({
+   "conversationId":conversation_id
+  })
+    .sort({ 'metaData.entry.changes.value.messages.timestamp': -1 })
+    .lean();
+
+
+  if (!latestMsgDoc) throw new Error("No message found for this wa_id");
+
+  // 2️⃣ Clone and update message doc
+  const newMsgDoc = JSON.parse(JSON.stringify(latestMsgDoc));
+// console.dir(newMsgDoc, { depth: null, colors: true });
+  // Increment _id's msg number
+  const [convPart, msgPart] = latestMsgDoc._id.split('-');
+  const msgNum = parseInt(msgPart.replace("msg", ""), 10) + 1;
+  newMsgDoc._id = `${convPart}-msg${msgNum}-api`;
+
+  // Increment meta entry id
+  let metaEntryId = parseInt(newMsgDoc.metaData.entry[0].id, 10) + 1;
+  newMsgDoc.metaData.entry[0].id = metaEntryId.toString();
+
+  // Update timestamp to current
+  const newTimestamp = Math.floor(Date.now() / 1000).toString();
+  newMsgDoc.metaData.entry[0].changes[0].value.messages[0].timestamp = newTimestamp;
+newMsgDoc.metaData.entry[0].changes[0].value.contacts[0].wa_id = wa_id1;
+  // Update text body
+  newMsgDoc.metaData.entry[0].changes[0].value.messages[0].text.body = newText;
+ newMsgDoc.metaData.entry[0].changes[0].value.messages[0].from = wa_id1
+  // Generate new message ID (random digits)
+  const oldMsgId = newMsgDoc.metaData.entry[0].changes[0].value.messages[0].id;
+  const randomDigits = Math.floor(1000 + Math.random() * 9000);
+  const newMsgId = oldMsgId.split("=")[0] + "=" + randomDigits;
+
+  newMsgDoc.metaData.entry[0].changes[0].value.messages[0].id = newMsgId;
+
+  // Insert new message doc
+  const insertedMsg = await ProcessedMessages.create(newMsgDoc);
+
+  // 3️⃣ Find latest status doc for same conversation
+  const latestStatusDoc = await ProcessedMessages.findOne({
+    payload_type: 'whatsapp_webhook',
+    'metaData.entry.changes.value.statuses': { $exists: true },
+    'metaData.entry.changes.value.statuses.id': latestMsgDoc.metaData.entry[0].changes[0].value.messages[0].id
+  }).lean();
+
+  if (!latestStatusDoc) throw new Error("No status found for this message");
+
+  // 4️⃣ Clone and update status doc
+  const newStatusDoc = JSON.parse(JSON.stringify(latestStatusDoc));
+
+  // Increment _id msg number
+  newStatusDoc._id = `${convPart}-msg${msgNum}-status`;
+
+  // Increment meta entry id
+  metaEntryId = parseInt(newStatusDoc.metaData.entry[0].id, 10) + 1;
+  newStatusDoc.metaData.entry[0].id = metaEntryId.toString();
+
+  // Keep status "delivered" and set recipient_id = wa_id2
+  newStatusDoc.metaData.entry[0].changes[0].value.statuses[0].status = "delivered";
+  newStatusDoc.metaData.entry[0].changes[0].value.statuses[0].recipient_id = wa_id2;
+
+  // Update id and meta_msg_id to match new message ID
+  newStatusDoc.metaData.entry[0].changes[0].value.statuses[0].id = newMsgId;
+  newStatusDoc.metaData.entry[0].changes[0].value.statuses[0].meta_msg_id = newMsgId;
+
+  // Update timestamp
+  newStatusDoc.metaData.entry[0].changes[0].value.statuses[0].timestamp = newTimestamp;
+
+  // Insert new status doc
+  const insertedStatus = await ProcessedMessages.create(newStatusDoc);
+
+  const data = await this.getConversations({conversation_id:conversation_id})
+//  console.dir(data, { depth: null, colors: true });
+  
+  let datalength = data.data.length;
+  const messageobj = data.data[datalength-1]
+  console.log('mesgaesent',messageobj);
+  
+  return (messageobj);
+}catch(error){
+  console.log('error',error.message)
+}
+};
+
+
+async markStatusesAsRead(wa_id, conversationId) {
+  try {
+
+
+    const docs = await ProcessedMessages.find({ conversationId });
+ let result=[]
+
+    if (!docs.length) {
+ 
+      return;
+    }
+
+    for (let docIdx = 0; docIdx < docs.length; docIdx++) {
+      let doc = docs[docIdx];
+      let updated = false;
+
+      doc.metaData?.entry?.forEach((entry, entryIdx) => {
+   
+
+        entry.changes?.forEach((change, changeIdx) => {
+          let statuses = change?.value?.statuses || [];
+    
+
+          statuses.forEach((status, statusIdx) => {
+    
+
+            if (status.recipient_id !== wa_id) {
+              status.status = "read";
+              status.timestamp = Math.floor(Date.now() / 1000).toString();
+              result.push(status.id)
+              updated = true;
+            } else {console.log('didnot found status');
+            
+            }
+          });
+        });
+      });
+
+    
+      if (updated) {
+          doc.markModified("metaData");
+        await doc.save();
+      } else {console.log('did not updated');
+      
+      }
+    }
+return result
+  } catch (err) {
+    console.error("❌ Error updating statuses:", err);
+  }
+}
+
+
+
+
+
+}
+
 
 module.exports = { UserModel: new UserModel(), User, ProcessedMessages };
