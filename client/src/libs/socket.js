@@ -1,7 +1,7 @@
 import { io } from "socket.io-client";
 
 let socket;
-const BACKEND_URL = "https://whatsapp-web-clone-2ldr.onrender.com" || process.env.NEXT_PUBLIC_SERVER_URL 
+const BACKEND_URL =  process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000' 
 export const getSocket = () => {
   if (!socket) {
     socket = io(BACKEND_URL, {
