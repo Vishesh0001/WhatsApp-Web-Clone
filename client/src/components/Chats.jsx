@@ -138,6 +138,7 @@ return(
       <div className="flex-1 overflow-y-auto px-3 md:px-6 py-4 space-y-3 md:space-y-4">
         {messages.map((message) => {
            let isOwnMessage = message.from ==waId
+           console.log('message',message);
           //  console.log(mess);
            
         //   if(role== 'agent'){isOwnMessage= message.from != waId}

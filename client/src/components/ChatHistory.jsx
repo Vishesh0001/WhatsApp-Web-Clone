@@ -24,6 +24,7 @@ const[waId,setWaID] = useState('')
 
         const { payload } = await jwtVerify(token, secret);
         setWaID(payload.wa_id)
+        console.log('Decoded payload:', payload);
         setRole(payload.r); 
       } catch (err) {
         console.error('Token verification failed:', err);

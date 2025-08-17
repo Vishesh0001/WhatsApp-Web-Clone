@@ -5,7 +5,10 @@ const { UserModel } = require('../modules/v1/user/models/user-model');
 module.exports = (server) => {
   const io = new Server(server, {
     cors: {
-      origin: '*',
+          origin: [
+      "http://localhost:3000",
+      "https://whatsapp-business-web.vercel.app"
+    ],
       methods: ['GET', 'POST'],
     },
   });
