@@ -1,11 +1,11 @@
 const { Server } = require('socket.io');
-const { User, ProcessedMessages,UserModel } = require('../modules/v1/user/models/user-model');
-const userModel = require('../modules/v1/user/models/user-model');
+const { UserModel } = require('../modules/v1/user/models/user-model');
+
 
 module.exports = (server) => {
   const io = new Server(server, {
     cors: {
-      origin: 'http://localhost:3000',
+      origin: '*',
       methods: ['GET', 'POST'],
     },
   });
@@ -19,11 +19,11 @@ module.exports = (server) => {
 
 
     });
-    socket.on('joinchats', async (data) => {
-      console.log(`User joined chat history: ${data.name}`);
-      socket.join('chathistory');
-      // You can implement logic to handle chat history here
-    });
+    // socket.on('joinchats', async (data) => {
+    //   console.log(`User joined chat history: ${data.name}`);
+    //   socket.join('chathistory');
+    //   // You can implement logic to handle chat history here
+    // });
     socket.on('leaveChat',(conversation_id)=>{
   // let wa_id1 = Number(wa_id.wa_id1);
   //    let wa_id2 = Number(wa_id.wa_id2)
@@ -45,7 +45,7 @@ module.exports = (server) => {
     // console.log('messageresponse',messageresponse);
 
     io.to(conversation_id).emit("receiveMessage", messageresponse);
-    io.to('chathistory').emit("receiveMessage", messageresponse);
+    // io.to('chathistory').emit("receiveMessage", messageresponse);
   });
   socket.on('disconnect', () => {
       console.log('Client disconnected:', socket.id);

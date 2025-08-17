@@ -36,18 +36,7 @@ const[waId,setWaID] = useState('')
   if (!text) return "";
   return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
 }
-useEffect(()=>{
-  socket.emit("joinchats", { name:'chathistory' });
- 
-  socket.on("receiveMessage", (newMsg) => {
-    let text = newMsg.text.body
-     let conversation_id = newMsg.conversationId
-    //  console.log('newMsg',newMsg);
-    //  console.log('788788787',text,conversation_id);
-   
-     
-});
-},[])
+
   useEffect(() => {
     async function getChats() {
       try {
