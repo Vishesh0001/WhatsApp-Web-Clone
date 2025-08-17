@@ -350,11 +350,11 @@ for (const key of docs) {
   
   let wa_id
   // console.log(key.wa_id)
-  if(role=='agent'){wa_id = key.wa_id}
-  else{wa_id= waId}
-   let profilePic = await User.findOne({'wa_id':wa_id},{'profilePic':1,'name':1})
+
+   let profilePic = await User.findOne({'wa_id':key.wa_id},{'profilePic':1,'name':1})
   //  console.log(profilePic);
-   
+     if(role=='agent'){wa_id = key.wa_id}
+  else{wa_id= waId}
    let doc = await ProcessedMessages.findOne(
     { "metaData.entry.changes.value.contacts.wa_id": wa_id },
     { _id: 1,"payload_type":1,"conversationId":1}

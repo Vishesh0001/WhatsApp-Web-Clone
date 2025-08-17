@@ -227,7 +227,7 @@ export default function Chats({ wa_id }) {
       setConversationId(wa_id.conversation_id);
     }
   }, [wa_id]);
-console.log("waId:", waId, "name:", name, "profilePic:", profilePic,conversation_id);
+console.log("waId:", waId, "name:", name, "profilePic:", profilePic,conversation_id,'from:',from,'wa_id:',wa_id);
   useEffect(() => {
     if (wa_id && conversation_id) { // Ensure conversation_id is also valid
       async function getmessages() {

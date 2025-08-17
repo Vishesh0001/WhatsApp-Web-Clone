@@ -240,14 +240,21 @@ export default function ChatHistory({ onSelectChat }) {
     getChats();
   }, []);
 
-  const handleSelectChat = useCallback((conversation_id, waId, name, profilePic, role, from) => {
+  const handleSelectChat = useCallback((conversation_id, waId, originalName, originalProfilePic, from, role) => {
+    let name = originalName;
+    let profilePic = originalProfilePic;
+
+    // if (role === 'customer') {
+    //   name = 'Home Decor';
+    //   profilePic = 'https://placehold.co/600x400?text=Home+Decor';
+    // }
+
     socket.emit("chatOpened", {
       conversation_id: conversation_id,
       waid: waId,
     });
     onSelectChat({ conversation_id: conversation_id, waid: waId, name: name, profilePic: profilePic, role: role, from: from });
   }, [socket, onSelectChat]);
-
   return (
     <div className="w-full h-full flex flex-col bg-[#161717] overflow-hidden">
       <nav className="bg-[#161717] flex-shrink-0 ">
@@ -279,7 +286,7 @@ export default function ChatHistory({ onSelectChat }) {
 
       <div className="flex-1 overflow-y-auto">
         <List sx={{ padding: 0 }}>
-          {chats.map((chat, index) => {
+         {role && chats.map((chat, index) => { // Conditionally render when role is available
             const conversationId = chat?.conversationId;
             let name = chat?.name || "Unknown";
             let timestamp = chat?.timestamp;
@@ -288,10 +295,6 @@ export default function ChatHistory({ onSelectChat }) {
             let lastMessage = truncateText(chat?.text?.body, 30);
             let profilePic = chat?.profilePic;
 
-            if (role === 'customer') {
-              name = 'Home Decor';
-              profilePic = 'https://placehold.co/600x400?text=Home+Decor';
-            }
 
             return (
               <ListItem
