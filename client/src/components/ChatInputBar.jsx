@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { Send, Paperclip, Smile } from "lucide-react";
 import { getSocket } from "../libs/socket";
-
+import EmojiPicker from "emoji-picker-react";
 export default function ChatInputBar({ conversationId }) {
   const {wa_id, conversation_id,wa_id2} = conversationId
   const [message, setMessage] = useState("");
   const socket = getSocket();
-
+  const [showPicker, setShowPicker] = useState(false);
   async function onSend() {
     if (!message.trim()) return; 
 
@@ -18,7 +18,9 @@ export default function ChatInputBar({ conversationId }) {
 
     setMessage(""); 
   }
-
+  const handleEmojiClick = (emojiObject) => {
+    setMessage((prev) => prev + emojiObject.emoji);
+  };
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -29,7 +31,7 @@ export default function ChatInputBar({ conversationId }) {
   return (
     <div className="flex h-[52px] items-center gap-2 p-3 bg-[#242626] rounded-full  border-gray-200">
       {/* Attachment button */}
-      <button className="p-2 text-gray-500 hover:text-gray-700 transition-colors">
+      <button className="p-2 text-gray-500 ">
         <Paperclip size={20} />
       </button>
 
@@ -42,9 +44,12 @@ export default function ChatInputBar({ conversationId }) {
           placeholder="Type a message"
           className="w-full px-4 py-3 pr-12 bg-transparent rounded-full outline-none text-white placeholder-gray-500"
         />
-        
+           {showPicker && <EmojiPicker className="mb-20" onEmojiClick={handleEmojiClick} />}
+              {showPicker && (
+        <button className="bg-white rounded-full w-12 h-6 z-20 text-black mb-120 " onClick={() => setShowPicker(false)}>X</button>
+      )}
         {/* Emoji button inside input */}
-        <button className=" p-1 text-gray-500 hover:text-gray-700 transition-colors">
+        <button  onClick={() => setShowPicker((prev) => !prev)} className=" p-1 text-gray-500 hover:text-gray-700 transition-colors">
           <Smile size={20} />
         </button>
 

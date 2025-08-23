@@ -14,9 +14,10 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Cookies from 'js-cookie';  
 import ChatHistory from '@/components/ChatHistory';
+import {getSocket, disconnectSocket } from '@/libs/socket';
 
 export default function HomePage() {
-  
+  const socket = getSocket();
   const [alignment, setAlignment] = useState('chats');
   const [pic,setPic]= useState('')
 
@@ -112,8 +113,10 @@ export default function HomePage() {
   };
 
   const handleLogout = () => {
-    Cookies.remove('token_test');  // remove cookie
-    window.location.href = '/login'; // redirect
+    Cookies.remove('token_test');  
+    disconnectSocket(); 
+      socket.emit("leaveAllRooms"); 
+    window.location.href = '/login';
   };
 
   return (

@@ -1,10 +1,7 @@
 import Cookies from 'js-cookie';
 import { encrypt, decrypt } from './crypto';
-// import { jwtVerify } from 'jose';
 import axios from 'axios';
-
 const apiKey = process.env.NEXT_PUBLIC_API_KEY ;
-// const jwtSecret = process.env.JWT_SECRET ;
 const BaseURL = process.env.NEXT_PUBLIC_API_BASE_URL
 const userBaseURL = `${BaseURL}/v1/user`;
 

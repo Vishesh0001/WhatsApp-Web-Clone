@@ -506,6 +506,44 @@ newMsgDoc.metaData.entry[0].changes[0].value.contacts[0].wa_id = wa_id1;
   console.log('error',error.message)
 }
 };
+async deleteMessage(msg_id){
+  try {
+    // Find and delete the message document
+    let message_id = msg_id.message_id
+      const deletedMessage = await ProcessedMessages.findOneAndDelete({
+      "metaData.entry.changes.value.messages.id": message_id
+    });
+
+    if (!deletedMessage) {
+      return {
+        code: 0,
+        message: { keyword: 'Message not found' },
+        data: [],
+        status: 404,
+      };
+    }
+
+
+    await ProcessedMessages.deleteMany({
+      "metaData.entry.changes.value.statuses.id": message_id
+    });
+
+    return {
+      code: 1,
+      message: { keyword: 'Message deleted successfully' },
+      data: { deletedMessageId: message_id },
+      status: 200,
+    };
+  } catch (error) {
+    console.log('deleteMessage error:', error.message);
+    return {
+      code: 0,
+      message: { keyword: 'internal server Error' },
+      data: [],
+      status: 500,
+    };
+  }
+}
 
 
 async markStatusesAsRead(wa_id, conversationId) {
@@ -534,7 +572,7 @@ async markStatusesAsRead(wa_id, conversationId) {
           statuses.forEach((status, statusIdx) => {
     
 
-            if (status.recipient_id !== wa_id) {
+            if (status.recipient_id == wa_id) {
               status.status = "read";
               status.timestamp = Math.floor(Date.now() / 1000).toString();
               result.push(status.id)

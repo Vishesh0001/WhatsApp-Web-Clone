@@ -62,6 +62,17 @@ class user {
       common.sendResponse(req, res, responsecode.SERVER_ERROR, { keyword: "txt_server_error" }, {}, 500);
     }
   }
+  async deleteMessage(req,res){
+    try {
+      // console.log('req.body',req.body)
+      let message_id = await common.decodeBody(req.body)
+      let response = await UserModel.deleteMessage(message_id)
+      common.sendResponse(req, res, response.code, response.message, response.data, response.status);
+    } catch (error) {
+      console.log('cont err',error.message)
+      common.sendResponse(req, res, responsecode.SERVER_ERROR, { keyword: "txt_server_error" }, {}, 500);
+    }
+  }
 }
 
 module.exports = new user();

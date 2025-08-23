@@ -58,7 +58,7 @@ export default function Login (){
         // console.log('b',body);
         
         const resposne = await secureFetch("/login", JSON.stringify(body));
-        console.log('r',resposne);
+        // console.log('r',resposne);
         
         if (resposne.code != 1) {
 // alert(`${resposne.message.keyword}`)
@@ -69,6 +69,7 @@ export default function Login (){
         Cookies.set("token_test", resposne.data.token, { expires: 0.083, path: '/' });
       //  Cookies.set('debug_test', '123');
         // Cookies.set('token_test', String(resposne.data.token));
+          // await new Promise((resolve) => setTimeout(resolve, 10000));
         router.push('/')
       }
 
