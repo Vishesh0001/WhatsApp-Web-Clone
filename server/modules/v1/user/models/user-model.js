@@ -499,7 +499,7 @@ newMsgDoc.metaData.entry[0].changes[0].value.contacts[0].wa_id = wa_id1;
   
   let datalength = data.data.length;
   const messageobj = data.data[datalength-1]
-  console.log('mesgaesent',messageobj);
+  // console.log('mesgaesent',messageobj);
   
   return (messageobj);
 }catch(error){

@@ -11,10 +11,10 @@ module.exports = (server) => {
   });
 
   io.on('connection', (socket) => {
-    console.log('New client connected:', socket.id);
+    // console.log('New client connected:', socket.id);
 
     socket.on('join', async (conversation_id) => {
-         console.log(`User ${conversation_id.conversation_id} joined`);
+        //  console.log(`User ${conversation_id.conversation_id} joined`);
       socket.join(conversation_id.conversation_id);
 
 
@@ -30,28 +30,28 @@ module.exports = (server) => {
 
    socket.on("deleteMessage", async({ message_id, conversation_id}) => {
 
-    console.log('in delete scoket',message_id, conversation_id);
+    // console.log('in delete scoket',message_id, conversation_id);
     io.to(conversation_id).emit("messageDeleted", { message_id });
    })
   socket.on("sendMessage", async({  message,wa_id, conversation_id,wa_id2}) => {
 
-    console.log('in scoket',message,wa_id, conversation_id,wa_id2);
+    // console.log('in scoket',message,wa_id, conversation_id,wa_id2);
     let messageresponse = await  UserModel.createMessageAndStatus({message,wa_id,conversation_id,wa_id2})
     io.to(conversation_id).emit("receiveMessage", messageresponse);
   });
   socket.on('disconnect', () => {
-      console.log('Client disconnected:', socket.id);
+      // console.log('Client disconnected:', socket.id);
   });
   socket.on("leaveAllRooms", () => {
     socket.rooms.forEach((room) => {
       if (room !== socket.id) {
         socket.leave(room);
-        console.log(`${socket.id} left room ${room}`);
+        // console.log(`${socket.id} left room ${room}`);
       }
     });
   });
   socket.on("chatOpened", async(data) => {
-    console.log("Chat opened:", data);
+    // console.log("Chat opened:", data);
   let response = await UserModel.markStatusesAsRead(data.waid,data.conversation_id)
 
   let conversation_id = data.conversation_id
