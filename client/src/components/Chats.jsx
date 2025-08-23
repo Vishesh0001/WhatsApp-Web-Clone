@@ -63,7 +63,7 @@ const handleClickOpen = (messageId) => {
     messagesEndRef.current?.scrollIntoView({   behavior: "smooth",
     block: "end",  });
   }, [messages]);
-console.log("waId:", waId, "name:", name, "profilePic:", profilePic,conversation_id,'from:',from,'wa_id:',wa_id);
+// console.log("waId:", waId, "name:", name, "profilePic:", profilePic,conversation_id,'from:',from,'wa_id:',wa_id);
   useEffect(() => {
     if (wa_id && conversation_id) { 
       async function getmessages() {
